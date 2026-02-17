@@ -4,4 +4,9 @@ out/
 .env
 *.db
 *.sqlite
+*.db-wal
+*.db-shm
 .DS_Store
+mcp-server/dist/
+mcp-server/node_modules/
+.idea/

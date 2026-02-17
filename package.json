@@ -1,0 +1,40 @@
+{
+  "name": "agentic-project-board",
+  "version": "0.1.0",
+  "private": true,
+  "type": "module",
+  "main": "out/main/main.js",
+  "scripts": {
+    "dev": "electron-vite dev",
+    "build": "electron-vite build",
+    "preview": "electron-vite preview",
+    "postinstall": "electron-builder install-app-deps",
+    "build:mcp": "cd mcp-server && npm run build"
+  },
+  "dependencies": {
+    "@dagrejs/dagre": "^1.1.8",
+    "@emotion/react": "^11.14.0",
+    "@emotion/styled": "^11.14.1",
+    "@mui/icons-material": "^7.3.6",
+    "@mui/material": "^7.3.6",
+    "@xyflow/react": "^12.10.0",
+    "better-sqlite3": "^12.2.0",
+    "react": "^19.2.0",
+    "react-dom": "^19.2.0",
+    "react-markdown": "^10.1.0",
+    "react-router-dom": "^7.10.0"
+  },
+  "devDependencies": {
+    "@types/better-sqlite3": "^7.6.13",
+    "@types/dagre": "^0.7.53",
+    "@types/react": "^19.2.5",
+    "@types/react-dom": "^19.2.3",
+    "@vitejs/plugin-react": "^5.1.1",
+    "babel-plugin-react-compiler": "^1.0.0",
+    "electron": "^40.2.0",
+    "electron-builder": "^26.0.12",
+    "electron-vite": "^5.0.0",
+    "typescript": "~5.9.3",
+    "vite": "^7.2.4"
+  }
+}
