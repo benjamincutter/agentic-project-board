@@ -9,4 +9,5 @@ out/
 .DS_Store
 mcp-server/dist/
 mcp-server/node_modules/
+reviews/node_modules/
 .idea/

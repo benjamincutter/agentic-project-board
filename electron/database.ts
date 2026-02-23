@@ -1,6 +1,7 @@
 import Database from 'better-sqlite3';
 import path from 'path';
 import fs from 'fs';
+import os from 'os';
 import { app } from 'electron';
 
 let db: Database.Database | null = null;
@@ -28,6 +29,64 @@ export const initDatabase = (): string => {
 export const getDb = (): Database.Database => {
   if (!db) throw new Error('Database not initialized. Call initDatabase() first.');
   return db;
+};
+
+/**
+ * Sync agent profiles from ~/.claude/agents/ into the DB.
+ * Each subdirectory containing a profile.md becomes a profile row.
+ * Uses upsert: existing profiles (matched by name) get their content updated,
+ * new profiles are inserted. This keeps the DB in sync with the filesystem source of truth.
+ */
+export const seedAgentProfiles = () => {
+  const database = getDb();
+
+  // Look for agent profiles in the standard Claude Code agents directory
+  const home = os.homedir();
+  const agentDirs = [
+    path.join(home, '.claude', 'agents'),
+  ];
+
+  for (const agentsDir of agentDirs) {
+    if (!fs.existsSync(agentsDir)) continue;
+
+    const entries = fs.readdirSync(agentsDir, { withFileTypes: true });
+    for (const entry of entries) {
+      if (!entry.isDirectory()) continue;
+
+      const profilePath = path.join(agentsDir, entry.name, 'profile.md');
+      if (!fs.existsSync(profilePath)) continue;
+
+      const content = fs.readFileSync(profilePath, 'utf-8');
+
+      // Parse frontmatter for name and description
+      const fmMatch = content.match(/^---\n([\s\S]*?)\n---/);
+      let profileName = entry.name;
+      let agentType = 'coder';
+
+      if (fmMatch) {
+        const fm = fmMatch[1];
+        const nameMatch = fm.match(/^name:\s*"?(.+?)"?\s*$/m);
+        if (nameMatch) profileName = nameMatch[1];
+        const typeMatch = fm.match(/^type:\s*"?(.+?)"?\s*$/m);
+        if (typeMatch) agentType = typeMatch[1];
+      }
+
+      // Upsert: update content if name exists, otherwise insert
+      const existing = database.prepare(
+        'SELECT id FROM agent_profiles WHERE name = ?',
+      ).get(profileName) as { id: number } | undefined;
+
+      if (existing) {
+        database.prepare(
+          'UPDATE agent_profiles SET content = ?, agent_type = ? WHERE id = ?',
+        ).run(content, agentType, existing.id);
+      } else {
+        database.prepare(
+          'INSERT INTO agent_profiles (name, agent_type, content) VALUES (?, ?, ?)',
+        ).run(profileName, agentType, content);
+      }
+    }
+  }
 };
 
 export const runMigrations = () => {

@@ -2,6 +2,7 @@ import { Tabs, Tab, Box } from '@mui/material';
 import ViewKanbanIcon from '@mui/icons-material/ViewKanban';
 import AccountTreeIcon from '@mui/icons-material/AccountTree';
 import ForumIcon from '@mui/icons-material/Forum';
+import TerminalIcon from '@mui/icons-material/Terminal';
 
 interface NavTabsProps {
   value: number;
@@ -14,6 +15,7 @@ const NavTabs = ({ value, onChange }: NavTabsProps) => (
       <Tab icon={<ViewKanbanIcon />} label="Board" iconPosition="start" />
       <Tab icon={<AccountTreeIcon />} label="Dependencies" iconPosition="start" />
       <Tab icon={<ForumIcon />} label="Dialogue" iconPosition="start" />
+      <Tab icon={<TerminalIcon />} label="Agent IDE" iconPosition="start" />
     </Tabs>
   </Box>
 );

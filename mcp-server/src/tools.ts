@@ -193,4 +193,101 @@ export const registerTools = (server: McpServer) => {
       return { content: [{ type: 'text' as const, text: JSON.stringify(status, null, 2) }] };
     },
   );
+
+  // --- Agent Profiles ---
+  server.tool(
+    'list_agent_profiles',
+    'List available agent profiles (coding agents, reviewers, etc.). Returns id, name, agent_type. Use get_agent_profile to load full content.',
+    {
+      agent_type: z.string().optional().describe('Filter by type: "coder", "reviewer", or omit for all'),
+    },
+    async (args) => {
+      const profiles = db.listAgentProfiles(args.agent_type);
+      return { content: [{ type: 'text' as const, text: JSON.stringify(profiles, null, 2) }] };
+    },
+  );
+
+  server.tool(
+    'get_agent_profile',
+    'Load an agent profile by ID or name. Returns the full profile content (markdown) with memories appended. Use as a system prompt for a Claude Code session.',
+    {
+      id: z.number().optional().describe('Profile ID'),
+      name: z.string().optional().describe('Profile name (e.g. "Dr. Cox", "Turk")'),
+    },
+    async (args) => {
+      if (!args.id && !args.name) {
+        return { content: [{ type: 'text' as const, text: 'Error: provide either id or name' }] };
+      }
+      const profile = db.getAgentProfileWithMemories({ id: args.id, name: args.name });
+      if (!profile) {
+        return { content: [{ type: 'text' as const, text: `Profile not found: ${args.id ?? args.name}` }] };
+      }
+      return { content: [{ type: 'text' as const, text: JSON.stringify(profile, null, 2) }] };
+    },
+  );
+
+  server.tool(
+    'add_memory',
+    'Add a memory to an agent profile. Memories persist across sessions and are appended to the profile when loaded. Use for lessons learned, preferences, patterns discovered, etc.',
+    {
+      profile_id: z.number().optional().describe('Profile ID'),
+      profile_name: z.string().optional().describe('Profile name (e.g. "Dr. Cox", "Turk")'),
+      memory: z.string().describe('The memory to add (concise, one fact/lesson per call)'),
+    },
+    async (args) => {
+      if (!args.profile_id && !args.profile_name) {
+        return { content: [{ type: 'text' as const, text: 'Error: provide either profile_id or profile_name' }] };
+      }
+
+      let profileId = args.profile_id;
+      if (!profileId && args.profile_name) {
+        const profile = db.getAgentProfileByName(args.profile_name) as { id: number } | undefined;
+        if (!profile) {
+          return { content: [{ type: 'text' as const, text: `Profile not found: ${args.profile_name}` }] };
+        }
+        profileId = profile.id;
+      }
+
+      const memory = db.addAgentMemory(profileId!, args.memory);
+      return { content: [{ type: 'text' as const, text: JSON.stringify(memory, null, 2) }] };
+    },
+  );
+
+  server.tool(
+    'list_memories',
+    'List all memories for an agent profile',
+    {
+      profile_id: z.number().optional().describe('Profile ID'),
+      profile_name: z.string().optional().describe('Profile name (e.g. "Dr. Cox", "Turk")'),
+    },
+    async (args) => {
+      if (!args.profile_id && !args.profile_name) {
+        return { content: [{ type: 'text' as const, text: 'Error: provide either profile_id or profile_name' }] };
+      }
+
+      let profileId = args.profile_id;
+      if (!profileId && args.profile_name) {
+        const profile = db.getAgentProfileByName(args.profile_name) as { id: number } | undefined;
+        if (!profile) {
+          return { content: [{ type: 'text' as const, text: `Profile not found: ${args.profile_name}` }] };
+        }
+        profileId = profile.id;
+      }
+
+      const memories = db.getAgentMemories(profileId!);
+      return { content: [{ type: 'text' as const, text: JSON.stringify(memories, null, 2) }] };
+    },
+  );
+
+  server.tool(
+    'delete_memory',
+    'Delete a specific memory by ID',
+    {
+      id: z.number().describe('Memory ID'),
+    },
+    async (args) => {
+      db.deleteAgentMemory(args.id);
+      return { content: [{ type: 'text' as const, text: `Deleted memory ${args.id}` }] };
+    },
+  );
 };

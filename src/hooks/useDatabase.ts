@@ -1,5 +1,15 @@
 import { useState, useEffect } from 'react';
-import type { Project, Milestone, MilestoneDependency, Task, DialogueEntry } from '../types';
+import type {
+  Project,
+  Milestone,
+  MilestoneDependency,
+  Task,
+  DialogueEntry,
+  Dataset,
+  AgentProfile,
+  AgentThread,
+  ProfileDataset,
+} from '../types';
 
 const useRefreshTrigger = () => {
   const [tick, setTick] = useState(0);
@@ -111,4 +121,50 @@ export const useAllDialogue = (projectId: number | undefined, limit: number = 50
   }, [projectId, limit, tick]);
 
   return entries;
+};
+
+export const useDatasets = () => {
+  const [datasets, setDatasets] = useState<Dataset[]>([]);
+  const tick = useRefreshTrigger();
+
+  useEffect(() => {
+    window.api.getDatasets().then(setDatasets);
+  }, [tick]);
+
+  return datasets;
+};
+
+export const useAgentProfiles = (agentType?: string) => {
+  const [profiles, setProfiles] = useState<AgentProfile[]>([]);
+  const tick = useRefreshTrigger();
+
+  useEffect(() => {
+    window.api.getAgentProfiles(agentType).then(setProfiles);
+  }, [agentType, tick]);
+
+  return profiles;
+};
+
+export const useAgentThreads = (projectId: number | undefined) => {
+  const [threads, setThreads] = useState<AgentThread[]>([]);
+  const tick = useRefreshTrigger();
+
+  useEffect(() => {
+    if (!projectId) return;
+    window.api.getThreads(projectId).then(setThreads);
+  }, [projectId, tick]);
+
+  return threads;
+};
+
+export const useProfileDatasets = (profileId: number | undefined) => {
+  const [datasets, setDatasets] = useState<Dataset[]>([]);
+  const tick = useRefreshTrigger();
+
+  useEffect(() => {
+    if (!profileId) return;
+    window.api.getProfileDatasets(profileId).then(setDatasets);
+  }, [profileId, tick]);
+
+  return datasets;
 };

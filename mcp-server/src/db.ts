@@ -61,6 +61,29 @@ export const getDb = (): Database.Database => {
       created_at TEXT NOT NULL DEFAULT (datetime('now'))
     );
     INSERT OR IGNORE INTO projects (id, name, description) VALUES (1, 'Rover MVP', 'Go CLI for local dataset preprocessing');
+
+    CREATE TABLE IF NOT EXISTS datasets (
+      id INTEGER PRIMARY KEY AUTOINCREMENT,
+      name TEXT NOT NULL,
+      repo_path TEXT NOT NULL,
+      description TEXT,
+      created_at TEXT NOT NULL DEFAULT (datetime('now'))
+    );
+
+    CREATE TABLE IF NOT EXISTS agent_profiles (
+      id INTEGER PRIMARY KEY AUTOINCREMENT,
+      name TEXT NOT NULL,
+      agent_type TEXT NOT NULL DEFAULT 'reviewer',
+      content TEXT NOT NULL,
+      created_at TEXT NOT NULL DEFAULT (datetime('now'))
+    );
+
+    CREATE TABLE IF NOT EXISTS agent_memories (
+      id INTEGER PRIMARY KEY AUTOINCREMENT,
+      profile_id INTEGER NOT NULL REFERENCES agent_profiles(id) ON DELETE CASCADE,
+      content TEXT NOT NULL,
+      created_at TEXT NOT NULL DEFAULT (datetime('now'))
+    );
   `);
 
   return db;
@@ -194,6 +217,77 @@ export const addDependency = (milestoneId: number, dependsOnId: number) => {
     'INSERT OR IGNORE INTO milestone_dependencies (milestone_id, depends_on_milestone_id) VALUES (?, ?)',
   ).run(milestoneId, dependsOnId);
   return { milestone_id: milestoneId, depends_on_milestone_id: dependsOnId };
+};
+
+// --- Agent Profiles ---
+
+export const listAgentProfiles = (agentType?: string) => {
+  const db = getDb();
+  if (agentType) {
+    return db.prepare('SELECT id, name, agent_type, created_at FROM agent_profiles WHERE agent_type = ? ORDER BY name ASC').all(agentType);
+  }
+  return db.prepare('SELECT id, name, agent_type, created_at FROM agent_profiles ORDER BY name ASC').all();
+};
+
+export const getAgentProfile = (id: number) => {
+  const db = getDb();
+  return db.prepare('SELECT * FROM agent_profiles WHERE id = ?').get(id);
+};
+
+export const getAgentProfileByName = (name: string) => {
+  const db = getDb();
+  return db.prepare('SELECT * FROM agent_profiles WHERE name = ?').get(name);
+};
+
+export const getAgentMemories = (profileId: number) => {
+  const db = getDb();
+  return db.prepare(
+    'SELECT * FROM agent_memories WHERE profile_id = ? ORDER BY created_at ASC',
+  ).all(profileId) as Array<{ id: number; profile_id: number; content: string; created_at: string }>;
+};
+
+export const addAgentMemory = (profileId: number, content: string) => {
+  const db = getDb();
+  const result = db.prepare(
+    'INSERT INTO agent_memories (profile_id, content) VALUES (?, ?)',
+  ).run(profileId, content);
+  return db.prepare('SELECT * FROM agent_memories WHERE id = ?').get(result.lastInsertRowid);
+};
+
+export const deleteAgentMemory = (id: number) => {
+  const db = getDb();
+  db.prepare('DELETE FROM agent_memories WHERE id = ?').run(id);
+};
+
+/**
+ * Resolve a profile by id or name, then append its memories as a ## Memories section.
+ */
+export const getAgentProfileWithMemories = (idOrName: { id?: number; name?: string }) => {
+  const db = getDb();
+  const profile = idOrName.id
+    ? db.prepare('SELECT * FROM agent_profiles WHERE id = ?').get(idOrName.id)
+    : db.prepare('SELECT * FROM agent_profiles WHERE name = ?').get(idOrName.name!);
+
+  if (!profile) return null;
+
+  const p = profile as { id: number; name: string; agent_type: string; content: string; created_at: string };
+  const memories = getAgentMemories(p.id);
+
+  if (memories.length > 0) {
+    const memorySection = [
+      '',
+      '---',
+      '',
+      '## Memories',
+      '',
+      ...memories.map((m) => `- ${m.content}`),
+      '',
+    ].join('\n');
+
+    return { ...p, content: p.content + memorySection };
+  }
+
+  return p;
 };
 
 export const getProjectStatus = (projectId: number) => {
